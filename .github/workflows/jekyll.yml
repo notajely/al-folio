@@ -4,7 +4,7 @@ on:
   # Runs on pushes targeting the default branch
   push:
     branches:
-      - main
+      - main # 或者你的默认分支名，比如 master
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: '3.2' # 确保这是你项目需要的 Ruby 版本
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
           cache-version: 0 # Increment this number if you need to re-download cached gems
 
@@ -40,6 +40,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
+
+      # --- 新增：安装 Python 和 Jupyter ---
+      - name: Setup Python
+        uses: actions/setup-python@v5 # 使用较新版本的 action
+        with:
+          python-version: '3.x' # 或者指定一个具体的版本，如 '3.10', '3.11'
+
+      - name: Install Jupyter and nbconvert
+        run: |
+          python -m pip install --upgrade pip
+          pip install jupyter nbconvert pandas # pandas 经常在 notebook 中使用，一并安装
+      # --- 新增步骤结束 ---
 
       - name: Setup Pages
         id: pages
