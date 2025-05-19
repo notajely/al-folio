@@ -17,32 +17,54 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+
       - name: Setup Node.js ⚙️
         uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*' # Specify a Node.js version, LTS is a good default
+
       - name: Install Prettier 💾
         run: npm install --save-dev --save-exact prettier @shopify/prettier-plugin-liquid
+
       - name: Prettier Check 🔎
         id: prettier
         run: npx prettier . --check
+
       - name: Create diff 📝
         # https://docs.github.com/en/actions/learn-github-actions/expressions#failure
         if: ${{ failure() }}
         run: |
+          echo "Running Prettier to format files and create diff..."
           npx prettier . --write
           git diff -- . ':(exclude)package-lock.json' ':(exclude)package.json' > diff.txt
-          npm install -g diff2html-cli
-          diff2html -i file -s side -F diff.html -- diff.txt
+          # Check if diff.txt is empty or just whitespace
+          if [ -s diff.txt ] && [ "$(grep -vE '^\s*$' diff.txt | wc -l)" -gt 0 ]; then
+            echo "Installing diff2html-cli..."
+            npm install -g diff2html-cli
+            echo "Generating HTML diff..."
+            diff2html -i file -s side -F diff.html -- diff.txt
+            echo "Diff generated: diff.html"
+          else
+            echo "No effective changes after running Prettier, diff.txt is empty or contains only whitespace."
+            echo "Ensure Prettier is configured correctly and that there were actual formatting issues."
+            # Create an empty diff.html so the upload step doesn't fail if it expects the file
+            touch diff.html
+          fi
+
       - name: Upload html diff ⬆️
         id: artifact-upload
+        # Only upload if Prettier check specifically failed and diff was likely generated
         if: ${{ failure() && steps.prettier.conclusion == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
           name: HTML Diff
           path: diff.html
           retention-days: 7
+
       - name: Dispatch information to repository 🗣️
         if: ${{ failure() && steps.prettier.conclusion == 'failure' && github.event_name == 'pull_request' }}
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v3 # Updated to v3
         with:
+          token: ${{ secrets.PAT_FOR_REPOSITORY_DISPATCH }} # You might need a PAT here
           event-type: prettier-failed-on-pr
           client-payload: '{"pr_number": "${{ github.event.number }}", "artifact_url": "${{ steps.artifact-upload.outputs.artifact-url }}", "run_id": "${{ github.run_id }}"}'
