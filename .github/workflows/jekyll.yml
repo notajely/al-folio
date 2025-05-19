@@ -41,6 +41,8 @@ jobs:
           ruby-version: '3.2' # Changed to 3.2
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
           cache-version: 0 # Increment this number if you need to re-download cached gems
+      - name: Install Imagemagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
